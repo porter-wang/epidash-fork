@@ -25,7 +25,7 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
 
     // Get the ground and prediction data from store
     const groundTruthData = useAppSelector((state) => state.groundTruth.data);
-    console.debug("DEBUG: SingleModelHorizonPlot.tsx: groundTruthData", groundTruthData);
+    // console.debug("DEBUG: SingleModelHorizonPlot.tsx: groundTruthData", groundTruthData);
 
     const predictionsData = useAppSelector((state) => state.predictions.data);
 
@@ -43,7 +43,7 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
     function filterGroundTruthData(data: DataPoint[], state: string, dateRange: [Date, Date]): DataPoint[] {
         let filteredData = data.filter((d) => d.stateNum === state);
 
-        console.debug("DEBUG: SingleModelHorizonPlot.tsx: filterGroundTruthData: filteredData (using state)", filteredData);
+        // console.debug("DEBUG: SingleModelHorizonPlot.tsx: filterGroundTruthData: filteredData (using state)", filteredData);
 
         // Filter data by date range
         filteredData = filteredData.filter(
@@ -77,21 +77,39 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
         // Process each group
         return Array.from(groupedData, ([date, group]) => {
             const targetWeekData = group.filter(d => {
-                const targetWeek = new Date(d.referenceDate);
-                targetWeek.setDate(targetWeek.getDate() + horizon * 7);
+                // Calculate expected target date for this horizon
+                const expectedTargetDate = new Date(d.referenceDate);
+                expectedTargetDate.setDate(expectedTargetDate.getDate() + (horizon * 7));
+
+                // Set both dates to UTC midnight for comparison
+                const targetEndUTC = new Date(d.targetEndDate);
+                targetEndUTC.setUTCHours(0, 0, 0, 0);
+                expectedTargetDate.setUTCHours(0, 0, 0, 0);
+
+                // Calculate weeks between dates
+                const weeksDiff = Math.round(
+                    (targetEndUTC.getTime() - d.referenceDate.getTime()) /
+                    (7 * 24 * 60 * 60 * 1000)
+                );
+
+                // Buffer for same-day comparison
                 const bufferMs = 2 * 60 * 60 * 1000;
-                return d.targetEndDate.getTime() <= targetWeek.getTime() + bufferMs;
+                const timeDiff = Math.abs(targetEndUTC.getTime() - expectedTargetDate.getTime());
+
+                // Only return true if this is exactly the horizon we want
+                return timeDiff <= bufferMs && weeksDiff === horizon;
             });
 
             if (targetWeekData.length === 0) return null;
 
+            const prediction = targetWeekData[0];
             return {
                 date: new Date(date),
-                median: d3.median(targetWeekData, d => d.confidence500),
-                quantile05: d3.quantile(targetWeekData, 0.05, d => d.confidence500),
-                quantile25: d3.quantile(targetWeekData, 0.25, d => d.confidence500),
-                quantile75: d3.quantile(targetWeekData, 0.75, d => d.confidence500),
-                quantile95: d3.quantile(targetWeekData, 0.95, d => d.confidence500)
+                median: prediction.confidence500,
+                quantile05: prediction.confidence050,
+                quantile25: prediction.confidence250,
+                quantile75: prediction.confidence750,
+                quantile95: prediction.confidence950
             };
         }).filter(d => d !== null);
     }
@@ -155,6 +173,46 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
         return {xScale, yScale, xAxis, yAxis};
     }
 
+    function findActualDataRange(
+        groundTruthData: DataPoint[],
+        predictionsData: ModelPrediction[],
+        modelName: string,
+        state: string,
+        dateRange: [Date, Date]
+    ): [Date, Date] {
+        // Filter ground truth data for valid entries (admissions >= 0)
+        const validGroundTruth = groundTruthData.filter(d =>
+            d.stateNum === state &&
+            d.admissions >= -1 &&
+            d.date >= dateRange[0] &&
+            d.date <= dateRange[1]
+        );
+
+        // Get the model's prediction data
+        const modelPrediction = predictionsData.find(model => model.modelName === modelName);
+        const validPredictions = modelPrediction?.predictionData.filter(d =>
+            d.stateNum === state &&
+            d.referenceDate >= dateRange[0] &&
+            d.referenceDate <= dateRange[1]
+        ) || [];
+
+        // Find the earliest and latest dates with actual data
+        const startDates = [
+            validGroundTruth.length > 0 ? validGroundTruth[0].date : dateRange[1],
+            validPredictions.length > 0 ? validPredictions[0].referenceDate : dateRange[1]
+        ];
+
+        const endDates = [
+            validGroundTruth.length > 0 ? validGroundTruth[validGroundTruth.length - 1].date : dateRange[0],
+            validPredictions.length > 0 ? validPredictions[validPredictions.length - 1].referenceDate : dateRange[0]
+        ];
+
+        return [
+            new Date(Math.max(...startDates.map(d => d.getTime()))),
+            new Date(Math.min(...endDates.map(d => d.getTime())))
+        ];
+    }
+
     function renderBoxPlot(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>) {
         svg.selectAll("*").remove();
 
@@ -169,11 +227,20 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
         const chartWidth = viewBoxWidth - margin.left - margin.right;
         const chartHeight = viewBoxHeight - margin.top - margin.bottom;
 
+        // Get actual date range based on data availability
+        const [actualStart, actualEnd] = findActualDataRange(
+            groundTruthData,
+            predictionsData,
+            evaluationSingleModelViewModel,
+            evaluationsSingleModelViewSelectedStateCode,
+            [evaluationsSingleModelViewDateStart, evaluationSingleModelViewDateEnd]
+        );
+
         // Filter and process data
         const filteredGroundTruth = filterGroundTruthData(
             groundTruthData,
             evaluationsSingleModelViewSelectedStateCode,
-            [evaluationsSingleModelViewDateStart, evaluationSingleModelViewDateEnd]
+            [actualStart, actualEnd]
         );
         console.debug("DEBUG: SingleModelHorizonPlot.tsx: renderBoxPlot: filteredGroundTruth", filteredGroundTruth);
 
@@ -182,7 +249,7 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
             evaluationSingleModelViewModel,
             evaluationsSingleModelViewSelectedStateCode,
             evaluationSingleModelViewHorizon,
-            [evaluationsSingleModelViewDateStart, evaluationSingleModelViewDateEnd]
+            [actualStart, actualEnd]
         );
         console.debug("DEBUG: SingleModelHorizonPlot.tsx: renderBoxPlot: visualizationData", visualizationData);
 
@@ -202,6 +269,11 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
             const x = xScale(d.date.toISOString());
             if (!x) return;
 
+            // Find corresponding ground truth value
+            const groundTruthValue = filteredGroundTruth.find(g =>
+                g.date.toISOString() === d.date.toISOString()
+            )?.admissions;
+
             // 90% interval box
             chart.append("rect")
                 .attr("x", x)
@@ -220,12 +292,26 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
                 .attr("fill", modelColorMap[evaluationSingleModelViewModel])
                 .attr("opacity", 0.6);
 
-            // Median point
-            chart.append("circle")
-                .attr("cx", x + xScale.bandwidth() / 2)
-                .attr("cy", yScale(d.median))
-                .attr("r", 4)
-                .attr("fill", "white");
+            // Median line
+            chart.append("line")
+                .attr("x1", x)
+                .attr("x2", x + xScale.bandwidth())
+                .attr("y1", yScale(d.median))
+                .attr("y2", yScale(d.median))
+                .attr("stroke", modelColorMap[evaluationSingleModelViewModel])
+                .attr("stroke-width", 2);
+
+            // Ground truth point (only if valid data exists)
+            if (groundTruthValue && groundTruthValue >= 0) {
+                chart.append("circle")
+                    .attr("cx", x + xScale.bandwidth() / 2)
+                    .attr("cy", yScale(groundTruthValue))
+                    .attr("r", 4)
+                    .attr("fill", "white")
+                    .attr("stroke", modelColorMap[evaluationSingleModelViewModel])
+                    .attr("stroke-width", 1);
+            }
+
         });
 
         // Add axes with ForecastChart styling
