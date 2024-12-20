@@ -11,7 +11,7 @@ interface EvaluationsSettingsState {
     /* Model Related*/
     evaluationSingleModelViewModel: string; //Single Model view page allows only 1 model to be selected at a time
     evaluationSingleModelViewHorizon: number; //how many weeks ahead from reference date (matching surveillance week's number) should we look for as target_end_date in predictions to draw the intervals
-    evaluationSingleModelViewScores: any; //TODO: Implement after discussion
+    evaluationSingleModelViewScoresOption: any; //TODO: Implement after discussion
 
     /* Time Range Related */
     evaluationsSingleModelViewDateStart: Date;
@@ -28,7 +28,7 @@ const initialState: EvaluationsSettingsState = {
     /* Model Defaults*/
     evaluationSingleModelViewModel: "MOBS-GLEAM_FLUH",
     evaluationSingleModelViewHorizon: 0,
-    evaluationSingleModelViewScores: null,
+    evaluationSingleModelViewScoresOption: "MAPE",
 
     /* Time Range Defaults*/
     evaluationsSingleModelViewDateRange: "2023-08-01/2024-05-18",
@@ -64,14 +64,15 @@ const evaluationsSingleModelSettingsSlice = createSlice({
             state.evaluationSingleModelViewDateEnd = action.payload;
         },
         updateEvaluationsSingleModelViewDateRange: (state, action: PayloadAction<string>) => {
-            console.debug("DEBUG: Redux: evaluations-single-model-settings-slice.ts: updateEvaluationsSingleModelViewDateRange", action.payload);
+            // console.debug("DEBUG: Redux: evaluations-single-model-settings-slice.ts: updateEvaluationsSingleModelViewDateRange", action.payload);
             state.evaluationsSingleModelViewDateRange = action.payload;
         },
 
         /*TODO: Implement reducer for scores once discussed*/
-        /*updateEvaluationScores: (state, action: PayloadAction<any>) => {
-            state.evaluationSingleModelViewScores = action.payload;
-        },*/
+        updateEvaluationScores: (state, action: PayloadAction<any>) => {
+            console.debug("DEBUG: Redux: evaluations-single-model-settings-slice.ts: updateEvaluationScores", action.payload);
+            state.evaluationSingleModelViewScoresOption = action.payload;
+        },
     },
 });
 
@@ -82,9 +83,9 @@ export const {
     updateEvaluationSingleModelViewSelectedState,
     updateEvaluationSingleModelViewDateStart,
     updateEvaluationSingleModelViewDateEnd,
-    updateEvaluationsSingleModelViewDateRange
+    updateEvaluationsSingleModelViewDateRange,
     /* TODO: uncomment this after scores options are implemented */
-    //updateEvaluationScores
+    updateEvaluationScores
 } = evaluationsSingleModelSettingsSlice.actions;
 
 export default evaluationsSingleModelSettingsSlice.reducer;

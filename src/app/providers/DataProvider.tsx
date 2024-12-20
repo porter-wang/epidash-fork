@@ -24,7 +24,7 @@ import {
     PredictionDataPoint,
     SeasonOption,
     LoadingStates,
-    ProcessedDataWithDateRange
+    ProcessedDataWithDateRange, EvaluationsSingleModelScoreDataCollection
 } from "../Interfaces/forecast-interfaces";
 
 // Import actions directly from slices
@@ -32,6 +32,7 @@ import {setGroundTruthData} from '../store/Data/groundTruthSlice';
 import {setPredictionsData} from '../store/Data/predictionsSlice';
 import {setLocationData} from '../store/Data/locationSlice';
 import {setNowcastTrendsData} from '../store/Data/nowcastTrendsSlice';
+
 import {
     setSeasonOptions,
     updateDateEnd,
@@ -42,6 +43,8 @@ import {
 import {setStateThresholdsData} from '../store/Data/stateThresholdsSlice';
 
 import {setHistoricalGroundTruthData} from '../store/Data/historicalGroundTruthSlice';
+
+import {setEvaluationsSingleModelScoreData} from "../store/Data/evaluationsSingleModelScoreDataSlice";
 
 import {
     updateEvaluationSingleModelViewDateStart,
@@ -62,13 +65,14 @@ const modelNames = ['MOBS-GLEAM_FLUH', 'CEPH-Rtrend_fluH', 'MIGHTE-Nsemble', 'NU
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
     const dispatch = useAppDispatch();
     const [loadingStates, setLoadingStates] = useState<LoadingStates>({
+        evaluationScores: true,
         groundTruth: true,
         predictions: true,
         locations: true,
         nowcastTrends: true,
         thresholds: true,
         historicalGroundTruth: true,
-        seasonOptions: true,
+        seasonOptions: true
     });
     const [dataFetchStarted, setDataFetchStarted] = useState(false);
 
@@ -277,7 +281,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({children}
                 await Promise.all([
                     fetchNowcastTrendsData(),
                     fetchThresholdsData(),
-                    fetchHistoricalGroundTruthData()
+                    fetchHistoricalGroundTruthData(),
+                    fetchEvaluationsSingleModelScoreData(),
                 ]);
             }
         } catch (error) {
@@ -363,6 +368,83 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({children}
         } catch (error) {
             console.error('Error fetching historical ground truth data:', error);
             updateLoadingState('historicalGroundTruth', false);
+        }
+    };
+
+
+    /* Fetch the `/public/evaluations-score/` path's `WIS_ratio.csv` and `MAPE.csv` asyncly, then organize them into model and metrics respectively;
+        *  WIS_ratio.csv produces EvaluationsSingleModelScoreDataCollection with scoreMetric as "WIS_Ratio", while MAPE.csv produces "MAPE" respectively;
+        *  modelName can be found in each CSV files' entries' 'Model' column;
+        * in each score data point, (again, consult the custom interfaces), referenceDate is the date of the score, and score is the actual score value:
+        *   - MAPE: the column is literally named 'MAPE'
+        *   - WIS_Ratio: the column is literally named 'wis_ratio'
+        * Note: I am keeping the number float point precision to as much as possible, until the limit of d3.js' precision, which is 16 digits (?)
+        *
+        * Then in the end we push the data into store using dispatch(setEvaluationsSingleModelScoreData(data));
+        *  */
+    const fetchEvaluationsSingleModelScoreData = async () => {
+        try {
+            // Fetch both files in parallel
+            const [wisRatioData, mapeData] = await Promise.all([
+                d3.csv('/data/evaluations-score/WIS_ratio.csv'),
+                d3.csv('/data/evaluations-score/MAPE.csv')
+            ]);
+
+            // Process WIS Ratio data
+            const wisRatioByModel = new Map<string, { referenceDate: Date; score: number; }[]>();
+
+            wisRatioData.forEach(entry => {
+                const modelName = entry.Model;
+                const scoreData = {
+                    referenceDate: parseISO(entry.reference_date),
+                    score: +entry.wis_ratio
+                };
+
+                if (!wisRatioByModel.has(modelName)) {
+                    wisRatioByModel.set(modelName, []);
+                }
+                wisRatioByModel.get(modelName)?.push(scoreData);
+            });
+
+            // Process MAPE data
+            const mapeByModel = new Map<string, { referenceDate: Date; score: number; }[]>();
+            mapeData.forEach(entry => {
+                const modelName = entry.Model;
+                const scoreData = {
+                    referenceDate: parseISO(entry.reference_date),
+                    score: +entry.MAPE
+                };
+
+                if (!mapeByModel.has(modelName)) {
+                    mapeByModel.set(modelName, []);
+                }
+                mapeByModel.get(modelName)?.push(scoreData);
+            });
+
+            // Combine into final format
+            const evaluationsData: EvaluationsSingleModelScoreDataCollection[] = [];
+
+            // Add WIS Ratio data
+            wisRatioByModel.forEach((scoreData, modelName) => {
+                evaluationsData.push({
+                    modelName,
+                    scoreMetric: "WIS_Ratio",
+                    scoreData: scoreData.sort((a, b) => a.referenceDate.getTime() - b.referenceDate.getTime())
+                });
+            });
+
+            // Add MAPE data
+            mapeByModel.forEach((scoreData, modelName) => {
+                evaluationsData.push({
+                    modelName,
+                    scoreMetric: "MAPE",
+                    scoreData: scoreData.sort((a, b) => a.referenceDate.getTime() - b.referenceDate.getTime())
+                });
+            });
+
+            dispatch(setEvaluationsSingleModelScoreData(evaluationsData));
+        } catch (error) {
+            console.error('Error fetching evaluation score data:', error);
         }
     };
 
