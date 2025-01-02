@@ -1,6 +1,6 @@
 "use client"
 
-import React, {useMemo} from 'react';
+import React, {useMemo, useState} from 'react';
 
 import {modelColorMap} from '../../../Interfaces/modelColors';
 import {SeasonOption} from '../../../Interfaces/forecast-interfaces';
@@ -15,7 +15,7 @@ import {
     updateEvaluationSingleModelViewHorizon,
     updateEvaluationSingleModelViewDateStart,
     updateEvaluationSingleModelViewDateEnd,
-    updateEvaluationsSingleModelViewDateRange
+    updateEvaluationsSingleModelViewDateRange, updateEvaluationScores
     // updateEvaluationSingleModelViewSeasonOptions,
 } from '../../../store/evaluations-single-model-settings-slice';
 
@@ -32,13 +32,15 @@ const SingleModelSettingsPanel: React.FC = () => {
     const groundTruthData = useAppSelector((state) => state.groundTruth.data);
     const locationData = useAppSelector((state) => state.location.data);
 
+    const [scoreOptions] = useState(['WIS_Ratio', 'MAPE']);
+
     // Evaluation-specific state
     const {
         evaluationSingleModelViewSelectedStateName,
         evaluationsSingleModelViewSelectedStateCode,
         evaluationSingleModelViewModel,
         evaluationSingleModelViewHorizon,
-        evaluationSingleModelViewScores,
+        evaluationSingleModelViewScoresOption,
         evaluationsSingleModelViewDateRange,
         evaluationsSingleModelViewDateStart,
         evaluationSingleModelViewDateEnd,
@@ -74,6 +76,11 @@ const SingleModelSettingsPanel: React.FC = () => {
             dispatch(updateEvaluationSingleModelViewDateStart(selectedOption.startDate));
             dispatch(updateEvaluationSingleModelViewDateEnd(selectedOption.endDate));
         }
+    };
+
+    // Add handler
+    const onScoreSelectionChange = (value: string) => {
+        dispatch(updateEvaluationScores(value));
     };
 
     return (
@@ -143,10 +150,15 @@ const SingleModelSettingsPanel: React.FC = () => {
                     <div className="w-full justify-stretch items-stretch py-4">
                         <Typography variant="h6" className="text-white">Score</Typography>
                         <select
-                            disabled
-                            className="text-white border-[#5d636a] border-2 bg-mobs-lab-color-filterspane rounded-md w-full p-2 opacity-50"
+                            value={evaluationSingleModelViewScoresOption}
+                            onChange={(e) => onScoreSelectionChange(e.target.value)}
+                            className="text-white border-[#5d636a] border-2 bg-mobs-lab-color-filterspane rounded-md w-full p-2"
                         >
-                            <option>Coming soon...</option>
+                            {scoreOptions.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
                         </select>
                     </div>
 
@@ -157,7 +169,7 @@ const SingleModelSettingsPanel: React.FC = () => {
                             onChange={(e) => onSeasonSelectionChange(e.target.value)}
                             className="text-white border-[#5d636a] border-2 flex-wrap bg-mobs-lab-color-filterspane rounded-md w-full py-2 px-2 overflow-ellipsis"
                         >
-                            {evaluationSingleModelViewSeasonOptions.map((option: SeasonOption) => (
+                        {evaluationSingleModelViewSeasonOptions.map((option: SeasonOption) => (
                                 <option key={option.index} value={option.timeValue}>
                                     {option.displayString}
                                 </option>

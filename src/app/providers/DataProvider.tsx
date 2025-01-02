@@ -384,41 +384,46 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({children}
         *  */
     const fetchEvaluationsSingleModelScoreData = async () => {
         try {
-            // Fetch both files in parallel
             const [wisRatioData, mapeData] = await Promise.all([
                 d3.csv('/data/evaluations-score/WIS_ratio.csv'),
                 d3.csv('/data/evaluations-score/MAPE.csv')
             ]);
 
             // Process WIS Ratio data
-            const wisRatioByModel = new Map<string, { referenceDate: Date; score: number; }[]>();
+            const wisRatioByModel = new Map<string, { referenceDate: Date; score: number; location: string }[]>();
 
             wisRatioData.forEach(entry => {
                 const modelName = entry.Model;
                 const scoreData = {
                     referenceDate: parseISO(entry.reference_date),
-                    score: +entry.wis_ratio
+                    score: +entry.wis_ratio,
+                    location: entry.location,
+                    horizon: entry.horizon
                 };
 
-                if (!wisRatioByModel.has(modelName)) {
-                    wisRatioByModel.set(modelName, []);
+                const key = modelName;
+                if (!wisRatioByModel.has(key)) {
+                    wisRatioByModel.set(key, []);
                 }
-                wisRatioByModel.get(modelName)?.push(scoreData);
+                wisRatioByModel.get(key)?.push(scoreData);
             });
 
-            // Process MAPE data
-            const mapeByModel = new Map<string, { referenceDate: Date; score: number; }[]>();
+            // Process MAPE data - Note the capital L in Location
+            const mapeByModel = new Map<string, { referenceDate: Date; score: number; location: string }[]>();
             mapeData.forEach(entry => {
                 const modelName = entry.Model;
                 const scoreData = {
                     referenceDate: parseISO(entry.reference_date),
-                    score: +entry.MAPE
+                    score: +entry.MAPE,
+                    location: entry.Location, // Changed from entry.location
+                    horizon: entry.horizon
                 };
 
-                if (!mapeByModel.has(modelName)) {
-                    mapeByModel.set(modelName, []);
+                const key = modelName;
+                if (!mapeByModel.has(key)) {
+                    mapeByModel.set(key, []);
                 }
-                mapeByModel.get(modelName)?.push(scoreData);
+                mapeByModel.get(key)?.push(scoreData);
             });
 
             // Combine into final format
@@ -443,8 +448,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({children}
             });
 
             dispatch(setEvaluationsSingleModelScoreData(evaluationsData));
+            updateLoadingState('evaluationScores', false);
         } catch (error) {
             console.error('Error fetching evaluation score data:', error);
+            updateLoadingState('evaluationScores', false);
         }
     };
 

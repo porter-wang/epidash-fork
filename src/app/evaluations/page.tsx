@@ -12,6 +12,7 @@ import {Card} from "../CSS/material-tailwind-wrapper";
 import {SeasonOverviewSettings} from "./evaluations-components/SeasonOverview/SeasonOverviewSettingsPanel";
 import SingleModelSettingsPanel from "./evaluations-components/SingleModel/SingleModelSettingsPanel";
 import SingleModelHorizonPlot from "./evaluations-components/SingleModel/SingleModelHorizonPlot";
+import SingleModelScoreLineChart from "./evaluations-components/SingleModel/SingleModelScoreLineChart";
 
 const SingleModelContent = () => {
     const {loadingStates} = useDataContext();
@@ -28,8 +29,11 @@ const SingleModelContent = () => {
                         viewBoxHeight={DEFAULT_VIEW_HEIGHT}
                     />
                 </div>
-                <div className="w-full h-full min-h-0 border-2">
-                    <p className="text-white">Placeholder for score chart</p>
+                <div className="w-full h-full min-h-0">
+                    <SingleModelScoreLineChart
+                        viewBoxWidth={DEFAULT_VIEW_WIDTH}
+                        viewBoxHeight={DEFAULT_VIEW_HEIGHT}
+                    />
                 </div>
             </div>
         );

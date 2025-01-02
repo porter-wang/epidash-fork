@@ -106,4 +106,6 @@ export interface EvaluationsSingleModelScoreDataCollection {
 export interface EvaluationsSingleModelScoreData {
     referenceDate: Date;
     score: number;
+    location: string;   // Using US state code
+    horizon: number;
 }
