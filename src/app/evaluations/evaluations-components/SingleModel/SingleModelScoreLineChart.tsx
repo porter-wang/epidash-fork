@@ -3,12 +3,8 @@ import * as d3 from 'd3';
 import {useAppSelector} from '../../../store/hooks';
 import {isUTCDateEqual} from '../../../Interfaces/forecast-interfaces';
 
-interface ScoreLineChartProps {
-    viewBoxWidth: number;
-    viewBoxHeight: number;
-}
 
-const SingleModelScoreLineChart: React.FC<ScoreLineChartProps> = ({viewBoxWidth, viewBoxHeight}) => {
+const SingleModelScoreLineChart: React.FC = () => {
     const chartRef = useRef<SVGSVGElement>(null);
 
     // Get data and settings from Redux
@@ -48,18 +44,22 @@ const SingleModelScoreLineChart: React.FC<ScoreLineChartProps> = ({viewBoxWidth,
         if (!chartRef.current) return;
 
         const svg = d3.select(chartRef.current);
-        svg.selectAll('*').remove();
+        svg.selectAll("*").remove();
 
-        // Calculate margins
+        // Get actual dimensions
+        const width = chartRef.current.clientWidth;
+        const height = chartRef.current.clientHeight;
+
+        // Calculate margins based on container size
         const margin = {
-            top: viewBoxHeight * 0.05,
-            right: viewBoxWidth * 0.04,
-            bottom: viewBoxHeight * 0.1,
-            left: viewBoxWidth * 0.08
+            top: height * 0.05,
+            right: width * 0.02,
+            bottom: height * 0.1,
+            left: width * 0.02
         };
 
-        const chartWidth = viewBoxWidth - margin.left - margin.right;
-        const chartHeight = viewBoxHeight - margin.top - margin.bottom;
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
 
         // Filter data based on selected options including location
         const filteredData = evaluationsScoreData
@@ -84,8 +84,8 @@ const SingleModelScoreLineChart: React.FC<ScoreLineChartProps> = ({viewBoxWidth,
 
         if (filteredData.length === 0) {
             svg.append('text')
-                .attr('x', viewBoxWidth / 2)
-                .attr('y', viewBoxHeight / 2)
+                .attr('x', chartWidth / 2)
+                .attr('y', chartHeight / 2)
                 .attr('text-anchor', 'middle')
                 .attr('fill', 'white')
                 .style('font-family', 'var(--font-dm-sans)')
@@ -213,16 +213,14 @@ const SingleModelScoreLineChart: React.FC<ScoreLineChartProps> = ({viewBoxWidth,
         evaluationSingleModelViewHorizon,
         evaluationsScoreData,
         groundTruthData,
-        viewBoxWidth,
-        viewBoxHeight
     ]);
 
     return (
         <div className="w-full h-full">
             <svg
                 ref={chartRef}
-                viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-                preserveAspectRatio="xMidYMid meet"
+                width="100%"
+                height="100%"
                 className="w-full h-full"
             />
         </div>

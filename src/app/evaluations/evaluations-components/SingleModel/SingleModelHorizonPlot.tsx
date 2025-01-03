@@ -13,13 +13,8 @@ import {
 } from "../../../Interfaces/forecast-interfaces";
 import {useAppDispatch, useAppSelector} from "../../../store/hooks";
 
-interface SingleModelHorizonPlotProps {
-    viewBoxWidth: number;
-    viewBoxHeight: number;
-}
 
-
-const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizonPlotProps) => {
+const SingleModelHorizonPlot: React.FC = () => {
 
     const boxPlotRef = useRef<SVGSVGElement>(null);
 
@@ -216,16 +211,23 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
     function renderBoxPlot(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>) {
         svg.selectAll("*").remove();
 
-        // Calculate margins based on viewBox dimensions
+        // Get the actual SVG dimensions from the container
+        const svgElement = svg.node();
+        if (!svgElement) return;
+
+        const width = svgElement.clientWidth;
+        const height = svgElement.clientHeight;
+
+        // Calculate margins as percentages of the container size
         const margin = {
-            top: viewBoxHeight * 0.05,
-            right: viewBoxWidth * 0.04,
-            bottom: viewBoxHeight * 0.05,
-            left: viewBoxWidth * 0.04
+            top: height * 0.04,
+            right: width * 0.02,
+            bottom: height * 0.08,
+            left: width * 0.02
         };
 
-        const chartWidth = viewBoxWidth - margin.left - margin.right;
-        const chartHeight = viewBoxHeight - margin.top - margin.bottom;
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
 
         // Get actual date range based on data availability
         const [actualStart, actualEnd] = findActualDataRange(
@@ -355,19 +357,19 @@ const SingleModelHorizonPlot = ({viewBoxWidth, viewBoxHeight}: SingleModelHorizo
         groundTruthData,
         predictionsData
     ]);
+
     return (
         <div className="w-full h-full">
             <svg
                 ref={boxPlotRef}
-                viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-                preserveAspectRatio="xMidYMid meet"
+                width="100%"
+                height="100%"
                 className="w-full h-full"
-                fontStyle={`fontFamily: "var(--font-dm-sans)"`}
+                style={{fontFamily: "var(--font-dm-sans)"}}
             />
         </div>
-    );
-
-}
+    )
+};
 
 
 export default SingleModelHorizonPlot;

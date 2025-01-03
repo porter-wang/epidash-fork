@@ -16,24 +16,15 @@ import SingleModelScoreLineChart from "./evaluations-components/SingleModel/Sing
 
 const SingleModelContent = () => {
     const {loadingStates} = useDataContext();
-    // Default viewBox dimensions - these define the coordinate system
-    const DEFAULT_VIEW_WIDTH = 1200;
-    const DEFAULT_VIEW_HEIGHT = 600;
 
     if (!loadingStates.groundTruth || !loadingStates.predictions) {
         return (
-            <div className="grid grid-rows-2 gap-4 h-full w-full border border-b-brown-500">
-                <div className="w-full h-full min-h-0">
-                    <SingleModelHorizonPlot
-                        viewBoxWidth={DEFAULT_VIEW_WIDTH}
-                        viewBoxHeight={DEFAULT_VIEW_HEIGHT}
-                    />
+            <div className="chart-grid-container">
+                <div className="chart-container">
+                    <SingleModelHorizonPlot />
                 </div>
-                <div className="w-full h-full min-h-0">
-                    <SingleModelScoreLineChart
-                        viewBoxWidth={DEFAULT_VIEW_WIDTH}
-                        viewBoxHeight={DEFAULT_VIEW_HEIGHT}
-                    />
+                <div className="chart-container">
+                    <SingleModelScoreLineChart />
                 </div>
             </div>
         );
@@ -71,12 +62,10 @@ const EvaluationsPage = () => {
 
     return (
         <div className="evaluations-page">
-            {/* Header Area */}
             <div className="evaluations-header">
                 <h1 className="text-3xl text-white">Hospital Admission Forecast</h1>
             </div>
 
-            {/* Settings Panel */}
             <div className="evaluations-settings">
                 {!loadingStates.locations && (
                     activeTab === 'season-overview' ?
@@ -85,10 +74,8 @@ const EvaluationsPage = () => {
                 )}
             </div>
 
-            {/* Tab Panel Area */}
             <div className="evaluations-content">
-                {/* Tab Navigation */}
-                <div className="relative mb-6">
+                <div className="mb-4">
                     <div className="flex relative">
                         <button
                             onClick={() => setActiveTab('season-overview')}
@@ -122,13 +109,13 @@ const EvaluationsPage = () => {
                     <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gray-700"/>
                 </div>
 
-                {/* Tab Content */}
-                <Card className="h-[calc(100%-2.5rem)] bg-mobs-lab-color">
-                    {renderContent()}
-                </Card>
+                <div className="tab-container">
+                    <Card className="flex-1 bg-mobs-lab-color min-h-0">
+                        {renderContent()}
+                    </Card>
+                </div>
             </div>
 
-            {/* Optional: Global loading indicator */}
             {!isFullyLoaded && (
                 <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-md">
                     Loading additional data...
@@ -136,6 +123,7 @@ const EvaluationsPage = () => {
             )}
         </div>
     );
+
 };
 
 export default EvaluationsPage;
