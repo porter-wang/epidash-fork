@@ -414,7 +414,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({children}
                 const modelName = entry.Model;
                 const scoreData = {
                     referenceDate: parseISO(entry.reference_date),
-                    score: +entry.MAPE,
+                    score: (+entry.MAPE) * 100,
                     location: entry.Location, // Changed from entry.location
                     horizon: entry.horizon
                 };

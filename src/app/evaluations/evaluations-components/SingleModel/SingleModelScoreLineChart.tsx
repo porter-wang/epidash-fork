@@ -120,16 +120,18 @@ const SingleModelScoreLineChart: React.FC<ScoreLineChartProps> = ({viewBoxWidth,
             .append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
 
-        // Draw reference line at y = 1
-        chart.append('line')
-            .attr('x1', 0)
-            .attr('x2', chartWidth)
-            .attr('y1', yScale(1))
-            .attr('y2', yScale(1))
-            .attr('stroke', 'white')
-            .attr('stroke-width', 1)
-            .attr('stroke-dasharray', '4,4')
-            .attr('opacity', 0.5);
+        // Draw reference line at y = 1 EXCEPT when score option is MAPE
+        if (evaluationSingleModelViewScoresOption !== 'MAPE') {
+            chart.append('line')
+                .attr('x1', 0)
+                .attr('x2', chartWidth)
+                .attr('y1', yScale(1))
+                .attr('y2', yScale(1))
+                .attr('stroke', 'white')
+                .attr('stroke-width', 1)
+                .attr('stroke-dasharray', '4,4')
+                .attr('opacity', 0.5);
+        }
 
         // Create line generator
         const line = d3.line<any>()
@@ -174,8 +176,13 @@ const SingleModelScoreLineChart: React.FC<ScoreLineChartProps> = ({viewBoxWidth,
                     `${month}\n${day}`;
             });
 
+        // y-axis tick format to 2 decimal places, with EXCEPTION for MAPE where it is a percentage
         const yAxis = d3.axisLeft(yScale)
-            .tickFormat(d => d.toFixed(2));
+            .tickFormat((d: number) => {
+                return evaluationSingleModelViewScoresOption === 'MAPE' ?
+                    `${(d)}%` :
+                    d.toFixed(2);
+            });
 
         // Add axes
         chart.append('g')
